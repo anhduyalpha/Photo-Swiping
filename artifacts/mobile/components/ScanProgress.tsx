@@ -1,11 +1,5 @@
-import React, { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -16,16 +10,21 @@ interface ScanProgressProps {
 
 export function ScanProgress({ scanned, total }: ScanProgressProps) {
   const colors = useColors();
-  const progress = useSharedValue(0);
+  const progress = useRef(new Animated.Value(0)).current;
   const pct = total > 0 ? Math.min(scanned / total, 1) : 0;
 
   useEffect(() => {
-    progress.value = withTiming(pct, { duration: 300 });
+    Animated.timing(progress, {
+      toValue: pct,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
   }, [pct]);
 
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
+  const barWidth = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
 
   return (
     <View style={[styles.container, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -33,9 +32,7 @@ export function ScanProgress({ scanned, total }: ScanProgressProps) {
         Scanning your library...
       </Text>
       <View style={[styles.barBg, { backgroundColor: colors.muted }]}>
-        <Animated.View
-          style={[styles.bar, barStyle, { backgroundColor: colors.primary }]}
-        />
+        <Animated.View style={[styles.bar, { backgroundColor: colors.primary, width: barWidth }]} />
       </View>
       <Text style={[styles.sub, { color: colors.mutedForeground }]}>
         {scanned.toLocaleString()} of {total > 0 ? total.toLocaleString() : "?"} photos analyzed
@@ -45,27 +42,9 @@ export function ScanProgress({ scanned, total }: ScanProgressProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
-  },
-  label: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-  },
-  barBg: {
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  bar: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  sub: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
+  container: { padding: 20, borderRadius: 16, borderWidth: 1, gap: 10 },
+  label: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  barBg: { height: 6, borderRadius: 3, overflow: "hidden" },
+  bar: { height: "100%", borderRadius: 3 },
+  sub: { fontSize: 13, fontFamily: "Inter_400Regular" },
 });
