@@ -1,183 +1,230 @@
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  useColorScheme,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CategoryCard } from "@/components/CategoryCard";
-import { ScanProgress } from "@/components/ScanProgress";
 import { usePhotoCleaner } from "@/context/PhotoCleanerContext";
-import { useColors } from "@/hooks/useColors";
+
+const PRIMARY = "#7C3AED";
+const SUCCESS = "#34D399";
+const WARNING = "#FBBF24";
+const DANGER = "#F87171";
+
+function useTheme() {
+  const scheme = useColorScheme();
+  const dark = scheme === "dark";
+  return {
+    bg: dark ? "#0C0C0E" : "#F2F2F7",
+    card: dark ? "#1C1C1E" : "#FFFFFF",
+    border: dark ? "#2C2C2E" : "#E5E5EA",
+    text: dark ? "#FFFFFF" : "#000000",
+    subtext: dark ? "#8E8E93" : "#6B6B6B",
+    dark,
+  };
+}
 
 export default function HomeScreen() {
-  const colors = useColors();
+  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { status, progress, scanResult, startScan } = usePhotoCleaner();
 
-  const isScanning = status === "scanning";
+  const isScanning = status === "scanning" || status === "requesting_permission";
   const isDone = status === "done";
-  const isIdle = status === "idle" || status === "no_permission";
-  const isUnsupported = status === "unsupported";
+  const isIdle = status === "idle" || status === "no_permission" || status === "unsupported";
 
-  function handleScan() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    startScan();
-  }
+  const topPad = Platform.OS === "web" ? 60 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 90 : insets.bottom + 80;
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const scanPct =
+    progress.total > 0 ? Math.round((progress.scanned / progress.total) * 100) : 0;
 
   return (
     <ScrollView
-      style={[styles.root, { backgroundColor: colors.background }]}
-      contentContainerStyle={[
-        styles.content,
-        {
-          paddingTop: topPad + 16,
-          paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 24,
-        },
-      ]}
+      style={{ flex: 1, backgroundColor: theme.bg }}
+      contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: bottomPad, paddingHorizontal: 20 }}
       showsVerticalScrollIndicator={false}
     >
-      <LinearGradient
-        colors={[colors.primary + "22", "transparent"]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 0.4 }}
-        pointerEvents="none"
-      />
-
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.appName, { color: colors.foreground }]}>
-            CleanSnap
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            AI-powered photo cleaner
-          </Text>
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <View style={[styles.logoBox, { backgroundColor: PRIMARY + "22" }]}>
+          <Ionicons name="sparkles" size={24} color={PRIMARY} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[styles.appName, { color: theme.text }]}>CleanSnap</Text>
+          <Text style={[styles.appSub, { color: theme.subtext }]}>AI-powered photo cleaner</Text>
         </View>
         {isDone && (
-          <Pressable onPress={handleScan} style={styles.rescanBtn}>
-            <Feather name="refresh-cw" size={18} color={colors.primary} />
+          <Pressable onPress={startScan} style={[styles.rescanBtn, { borderColor: theme.border }]}>
+            <Ionicons name="refresh" size={18} color={PRIMARY} />
           </Pressable>
         )}
       </View>
 
-      {isUnsupported && (
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <MaterialCommunityIcons name="cellphone" size={32} color={colors.mutedForeground} />
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-            Native Device Required
+      {/* IDLE - Big Scan CTA */}
+      {isIdle && (
+        <View style={[styles.ctaCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.ctaIconWrap, { backgroundColor: PRIMARY + "18" }]}>
+            <Ionicons name="scan" size={48} color={PRIMARY} />
+          </View>
+          <Text style={[styles.ctaTitle, { color: theme.text }]}>
+            Ready to clean your library?
           </Text>
-          <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-            Scan your photos on a real iOS or Android device using the Expo Go app.
+          <Text style={[styles.ctaSub, { color: theme.subtext }]}>
+            CleanSnap will scan your photos and find duplicates, blurry images, and screenshots you
+            can safely delete.
           </Text>
+
+          <View style={styles.featureRow}>
+            {[
+              { icon: "copy-outline", label: "Duplicates", color: WARNING },
+              { icon: "eye-off-outline", label: "Blurry", color: DANGER },
+              { icon: "phone-portrait-outline", label: "Screenshots", color: SUCCESS },
+            ].map((f) => (
+              <View key={f.label} style={[styles.featureChip, { backgroundColor: f.color + "18" }]}>
+                <Ionicons name={f.icon as any} size={16} color={f.color} />
+                <Text style={[styles.featureLabel, { color: f.color }]}>{f.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {status === "no_permission" && (
+            <View style={[styles.permBanner, { backgroundColor: DANGER + "18", borderColor: DANGER + "44" }]}>
+              <Ionicons name="warning-outline" size={16} color={DANGER} />
+              <Text style={[styles.permText, { color: DANGER }]}>
+                Photo access denied. Please enable in Settings.
+              </Text>
+            </View>
+          )}
+
+          <Pressable style={[styles.scanBtn, { backgroundColor: PRIMARY }]} onPress={startScan}>
+            <Ionicons name="search" size={20} color="#FFF" />
+            <Text style={styles.scanBtnText}>Start Scan</Text>
+          </Pressable>
         </View>
       )}
 
-      {(isIdle || status === "requesting_permission") && !isUnsupported && (
-        <Pressable
-          style={[styles.scanCta, { backgroundColor: colors.card, borderColor: colors.border }]}
-          onPress={handleScan}
-        >
-          <LinearGradient
-            colors={[colors.primary, colors.primary + "CC"]}
-            style={styles.scanIcon}
-          >
-            <Ionicons name="scan-outline" size={32} color="#fff" />
-          </LinearGradient>
-          <Text style={[styles.cardTitle, { color: colors.foreground }]}>
-            Scan Your Library
-          </Text>
-          <Text style={[styles.cardSub, { color: colors.mutedForeground }]}>
-            AI will detect duplicates, blurry photos, and screenshots so you can clean fast.
-          </Text>
-          <View style={[styles.scanBtn, { backgroundColor: colors.primary }]}>
-            <Text style={styles.scanBtnText}>
-              {status === "requesting_permission" ? "Requesting Access..." : "Start Scan"}
-            </Text>
-          </View>
-        </Pressable>
-      )}
-
+      {/* SCANNING */}
       {isScanning && (
-        <ScanProgress scanned={progress.scanned} total={progress.total} />
+        <View style={[styles.scanningCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <ActivityIndicator size="large" color={PRIMARY} />
+          <Text style={[styles.scanningTitle, { color: theme.text }]}>
+            {status === "requesting_permission" ? "Requesting permission…" : "Scanning photos…"}
+          </Text>
+          {progress.total > 0 && (
+            <>
+              <Text style={[styles.scanningCount, { color: theme.subtext }]}>
+                {progress.scanned.toLocaleString()} of {progress.total.toLocaleString()} photos
+              </Text>
+              <View style={[styles.progressTrack, { backgroundColor: theme.border }]}>
+                <View style={[styles.progressFill, { backgroundColor: PRIMARY, width: `${scanPct}%` }]} />
+              </View>
+              <Text style={[styles.scanPct, { color: PRIMARY }]}>{scanPct}%</Text>
+            </>
+          )}
+        </View>
       )}
 
+      {/* DONE - Results */}
       {isDone && scanResult && (
         <>
-          <View style={[styles.summaryCard, { backgroundColor: colors.primary + "18", borderColor: colors.primary + "44" }]}>
-            <Text style={[styles.summaryTitle, { color: colors.primary }]}>
-              Scan Complete
-            </Text>
-            <Text style={[styles.summaryBig, { color: colors.foreground }]}>
+          {/* Summary */}
+          <View style={[styles.summaryCard, { backgroundColor: PRIMARY + "18", borderColor: PRIMARY + "33" }]}>
+            <Text style={[styles.summaryLabel, { color: PRIMARY }]}>SCAN COMPLETE</Text>
+            <Text style={[styles.summaryBig, { color: theme.text }]}>
               {scanResult.estimatedSavingsMB.toFixed(1)} MB
             </Text>
-            <Text style={[styles.summarySub, { color: colors.mutedForeground }]}>
-              could be freed from {scanResult.totalPhotos.toLocaleString()} photos
+            <Text style={[styles.summarySub, { color: theme.subtext }]}>
+              can be freed · {scanResult.totalPhotos.toLocaleString()} photos scanned
             </Text>
           </View>
 
-          <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>
-            FOUND ISSUES
-          </Text>
-
-          <View style={styles.categories}>
-            <CategoryCard
-              icon={<Ionicons name="copy-outline" size={24} color="#FF9F0A" />}
-              label="Duplicate Groups"
-              count={scanResult.clusters.length}
-              savingsMB={scanResult.clusters.reduce((s, c) => s + c.estimatedSavingsMB, 0)}
-              color="#FF9F0A"
-              onPress={() => router.push("/(tabs)/clean" as any)}
-            />
-            <CategoryCard
-              icon={<Ionicons name="eye-off-outline" size={24} color="#FF453A" />}
-              label="Blurry Photos"
-              count={scanResult.blurryPhotos.length}
-              savingsMB={scanResult.blurryPhotos.reduce((s, p) => s + (p.fileSize ?? 2_000_000) / (1024 * 1024), 0)}
-              color="#FF453A"
-              onPress={() => router.push("/(tabs)/clean" as any)}
-            />
-            <CategoryCard
-              icon={<Ionicons name="phone-portrait-outline" size={24} color="#32D74B" />}
-              label="Screenshots"
-              count={scanResult.screenshots.length}
-              savingsMB={scanResult.screenshots.reduce((s, p) => s + (p.fileSize ?? 1_000_000) / (1024 * 1024), 0)}
-              color="#32D74B"
-              onPress={() => router.push("/(tabs)/clean" as any)}
-            />
-          </View>
-
-          <Text style={[styles.sectionHeader, { color: colors.mutedForeground }]}>
-            ACTIONS
-          </Text>
+          {/* Category cards */}
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>WHAT WAS FOUND</Text>
 
           <Pressable
-            style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push("/(tabs)/clean" as any)}
+          >
+            <View style={[styles.resultIcon, { backgroundColor: WARNING + "22" }]}>
+              <Ionicons name="copy-outline" size={22} color={WARNING} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.resultTitle, { color: theme.text }]}>Duplicate Groups</Text>
+              <Text style={[styles.resultSub, { color: theme.subtext }]}>
+                {scanResult.clusters.reduce((s, c) => s + c.estimatedSavingsMB, 0).toFixed(1)} MB saveable
+              </Text>
+            </View>
+            <View style={[styles.countBadge, { backgroundColor: WARNING + "22" }]}>
+              <Text style={[styles.countText, { color: WARNING }]}>{scanResult.clusters.length}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push("/(tabs)/clean" as any)}
+          >
+            <View style={[styles.resultIcon, { backgroundColor: DANGER + "22" }]}>
+              <Ionicons name="eye-off-outline" size={22} color={DANGER} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.resultTitle, { color: theme.text }]}>Blurry Photos</Text>
+              <Text style={[styles.resultSub, { color: theme.subtext }]}>
+                {scanResult.blurryPhotos.reduce((s, p) => s + (p.fileSize ?? 2_000_000) / (1024 * 1024), 0).toFixed(1)} MB saveable
+              </Text>
+            </View>
+            <View style={[styles.countBadge, { backgroundColor: DANGER + "22" }]}>
+              <Text style={[styles.countText, { color: DANGER }]}>{scanResult.blurryPhotos.length}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
+          </Pressable>
+
+          <Pressable
+            style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => router.push("/(tabs)/clean" as any)}
+          >
+            <View style={[styles.resultIcon, { backgroundColor: SUCCESS + "22" }]}>
+              <Ionicons name="phone-portrait-outline" size={22} color={SUCCESS} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.resultTitle, { color: theme.text }]}>Screenshots</Text>
+              <Text style={[styles.resultSub, { color: theme.subtext }]}>
+                {scanResult.screenshots.reduce((s, p) => s + (p.fileSize ?? 1_000_000) / (1024 * 1024), 0).toFixed(1)} MB saveable
+              </Text>
+            </View>
+            <View style={[styles.countBadge, { backgroundColor: SUCCESS + "22" }]}>
+              <Text style={[styles.countText, { color: SUCCESS }]}>{scanResult.screenshots.length}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
+          </Pressable>
+
+          {/* Swipe Mode */}
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>MANUAL REVIEW</Text>
+          <Pressable
+            style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => router.push("/(tabs)/swipe" as any)}
           >
-            <View style={[styles.actionIcon, { backgroundColor: colors.primary + "22" }]}>
-              <MaterialCommunityIcons name="gesture-swipe" size={24} color={colors.primary} />
+            <View style={[styles.resultIcon, { backgroundColor: PRIMARY + "22" }]}>
+              <Ionicons name="swap-horizontal" size={22} color={PRIMARY} />
             </View>
-            <View style={styles.actionText}>
-              <Text style={[styles.actionTitle, { color: colors.foreground }]}>
-                Manual Swipe Mode
-              </Text>
-              <Text style={[styles.actionSub, { color: colors.mutedForeground }]}>
-                Review photos one by one — swipe to keep or delete
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.resultTitle, { color: theme.text }]}>Swipe to Keep / Delete</Text>
+              <Text style={[styles.resultSub, { color: theme.subtext }]}>
+                Review all {scanResult.totalPhotos.toLocaleString()} photos one by one
               </Text>
             </View>
-            <Feather name="chevron-right" size={20} color={colors.mutedForeground} />
+            <Ionicons name="chevron-forward" size={18} color={theme.subtext} />
           </Pressable>
         </>
       )}
@@ -186,128 +233,201 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    gap: 16,
-  },
-  header: {
+  headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  appName: {
-    fontSize: 28,
-    fontFamily: "Inter_700Bold",
-  },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
-  rescanBtn: {
-    padding: 10,
-  },
-  card: {
-    padding: 24,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 12,
     alignItems: "center",
+    marginBottom: 24,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
-  cardSub: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  scanCta: {
-    padding: 28,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 12,
-    alignItems: "center",
-  },
-  scanIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
+  logoBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
+  appName: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+  },
+  appSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  rescanBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: "center",
+    gap: 14,
+  },
+  ctaIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ctaTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    textAlign: "center",
+  },
+  ctaSub: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 21,
+  },
+  featureRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  featureChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  featureLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  permBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignSelf: "stretch",
+  },
+  permText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+  },
   scanBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 15,
+    paddingHorizontal: 36,
+    borderRadius: 16,
+    alignSelf: "stretch",
+    justifyContent: "center",
     marginTop: 4,
   },
   scanBtnText: {
-    color: "#fff",
+    color: "#FFF",
     fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  scanningCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: "center",
+    gap: 16,
+  },
+  scanningTitle: {
+    fontSize: 18,
     fontFamily: "Inter_600SemiBold",
+  },
+  scanningCount: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    alignSelf: "stretch",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  scanPct: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
   summaryCard: {
-    padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 4,
+    padding: 24,
     alignItems: "center",
+    gap: 4,
+    marginBottom: 24,
   },
-  summaryTitle: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 1,
-    textTransform: "uppercase",
+  summaryLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1.5,
   },
   summaryBig: {
-    fontSize: 40,
+    fontSize: 48,
     fontFamily: "Inter_700Bold",
+    lineHeight: 56,
   },
   summarySub: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
-  sectionHeader: {
+  sectionLabel: {
     fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 1.2,
-    marginBottom: -8,
+    marginBottom: 10,
+    marginTop: 4,
   },
-  categories: {
-    gap: 10,
-  },
-  actionCard: {
+  resultCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    gap: 14,
+    gap: 12,
+    marginBottom: 10,
   },
-  actionIcon: {
+  resultIcon: {
     width: 44,
     height: 44,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  actionText: {
-    flex: 1,
-    gap: 3,
-  },
-  actionTitle: {
+  resultTitle: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
-  actionSub: {
+  resultSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  countBadge: {
+    minWidth: 32,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  countText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
   },
 });
