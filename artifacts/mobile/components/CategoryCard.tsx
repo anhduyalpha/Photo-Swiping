@@ -1,16 +1,12 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
+  Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
   ViewStyle,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -34,31 +30,23 @@ export function CategoryCard({
   style,
 }: CategoryCardProps) {
   const colors = useColors();
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const scale = useRef(new Animated.Value(1)).current;
 
   function handlePressIn() {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
   }
 
   function handlePressOut() {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
   }
 
   return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-    >
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
       <Animated.View
         style={[
           styles.card,
           { backgroundColor: colors.card, borderColor: colors.border },
-          animStyle,
+          { transform: [{ scale }] },
           style,
         ]}
       >
@@ -66,14 +54,10 @@ export function CategoryCard({
           {icon}
         </View>
         <View style={styles.content}>
-          <Text style={[styles.count, { color: colors.foreground }]}>
-            {count}
-          </Text>
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
-            {label}
-          </Text>
+          <Text style={[styles.count, { color: colors.foreground }]}>{count}</Text>
+          <Text style={[styles.label, { color: colors.mutedForeground }]}>{label}</Text>
           {savingsMB != null && savingsMB > 0 && (
-            <Text style={[styles.savings, { color: color }]}>
+            <Text style={[styles.savings, { color }]}>
               ~{savingsMB < 1 ? `${Math.round(savingsMB * 1024)} KB` : `${savingsMB.toFixed(1)} MB`} saveable
             </Text>
           )}
@@ -102,23 +86,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  content: {
-    flex: 1,
-    gap: 2,
-  },
-  count: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-  },
-  label: {
-    fontSize: 14,
-    fontFamily: "Inter_500Medium",
-  },
-  savings: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
-  },
+  content: { flex: 1, gap: 2 },
+  count: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  label: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  savings: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   badge: {
     minWidth: 28,
     height: 28,
@@ -127,9 +98,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 8,
   },
-  badgeText: {
-    color: "#fff",
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
+  badgeText: { color: "#fff", fontSize: 12, fontFamily: "Inter_700Bold" },
 });
