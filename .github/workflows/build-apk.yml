@@ -35,12 +35,15 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        working-directory: .
         run: pnpm install --frozen-lockfile
 
       - name: Expo prebuild (generate Android project)
         working-directory: artifacts/mobile
-        run: pnpm exec expo prebuild --platform android --clean
+        run: pnpm exec expo prebuild --platform android --clean --no-install
+
+      - name: Install native dependencies after prebuild
+        working-directory: artifacts/mobile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build debug APK
         working-directory: artifacts/mobile/android
