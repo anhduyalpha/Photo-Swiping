@@ -3,28 +3,14 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PhotoCleanerProvider } from "@/context/PhotoCleanerContext";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
-
-function RootLayoutNav() {
-  return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="cluster/[id]"
-        options={{ title: "Similar Photos", presentation: "card" }}
-      />
-    </Stack>
-  );
-}
 
 export default function RootLayout() {
   const hiddenRef = useRef(false);
@@ -50,23 +36,25 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    const timeout = setTimeout(hideSplash, 4000);
-    return () => clearTimeout(timeout);
+    const t = setTimeout(hideSplash, 3000);
+    return () => clearTimeout(t);
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <PhotoCleanerProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <Stack screenOptions={{ headerBackTitle: "Back" }}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="cluster/[id]"
+                options={{ title: "Similar Photos", presentation: "card" }}
+              />
+            </Stack>
           </PhotoCleanerProvider>
         </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
