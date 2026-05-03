@@ -40,22 +40,11 @@ jobs:
 
       - name: Expo prebuild (generate Android project)
         working-directory: artifacts/mobile
-        run: pnpm exec expo prebuild --platform android --clean --no-install
-
-      - name: Bundle JavaScript
-        working-directory: artifacts/mobile
-        run: |
-          mkdir -p android/app/src/main/assets
-          pnpm exec react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file node_modules/expo-router/entry.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
+        run: pnpm exec expo prebuild --platform android --clean
 
       - name: Build debug APK
         working-directory: artifacts/mobile/android
-        run: ./gradlew assembleDebug -x createBundleDebugJsAndAssets --no-daemon
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Verify APK was produced
         run: test -f artifacts/mobile/android/app/build/outputs/apk/debug/app-debug.apk
