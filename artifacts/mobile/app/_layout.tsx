@@ -30,9 +30,7 @@ export default function RootLayout() {
   };
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      hideSplash();
-    }
+    if (fontsLoaded || fontError) hideSplash();
   }, [fontsLoaded, fontError]);
 
   useEffect(() => {
@@ -45,13 +43,12 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <PhotoCleanerProvider>
-            <Stack screenOptions={{ headerBackTitle: "Back" }}>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="cluster/[id]"
-                options={{ title: "Similar Photos", presentation: "card" }}
-              />
-            </Stack>
+            <Stack
+              screenOptions={{
+                headerBackTitle: "Back",
+                headerShown: false,
+              }}
+            />
           </PhotoCleanerProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
