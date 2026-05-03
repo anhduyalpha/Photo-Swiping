@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 import React, { useState } from "react";
@@ -75,6 +75,7 @@ export default function ClusterDetailScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ title: "Similar Photos", headerShown: true, headerBackTitle: "Back" }} />
       <FlatList
         data={cluster.photos}
         keyExtractor={(p) => p.id}
